@@ -3,8 +3,7 @@ var rp = require('/opt/node_modules/request-promise');
 const {Pool, Client} = require('/opt/node_modules/pg');
 const request = require("request");
 var db_host = process.env.DB_HOST;
-var reg = process.env.REGION;
-
+var reg = process.env.REGION
 // const connectionString = 'postgresql://postgres:secret@10.80.1.121:5432/apid'
 const connectionString = db_host;
 function DateFunction(){
@@ -42,7 +41,7 @@ var wrxbody ={}
 var query2=""
 var values=""
 exports.myhandler = async function abc(){
-   var res1 = await client.query("SELECT drug_id FROM shuffle_drugs where flag = 'pending' and region = '"+reg+"'");
+   var res1 = await client.query ("SELECT drug_id FROM shuffle_drugs where flag = 'pending' and region = '"+reg+"'");
     for(var i=0; i< res1.rows.length ; i++){
         for(var j=0; j < res1.rows[i].drug_id.length; j++){
             //console.log("print ((((((((((((((((((("+res1.rows[i].drug_id[j]);
@@ -101,8 +100,20 @@ try
     var DataDrugs = jsondata1.Drugs;
     if(DataDrugs != undefined && DataDrugs.length > 0){
          a++;
-    pricingData1.price = DataDrugs[0].Price;
-    pricingData1.pharmacy = DataDrugs[0].PharmacyName;
+                var lowestPrice =  parseFloat(DataDrugs[0].Price)
+                var lowestPharmacy=DataDrugs[0].PharmacyName;
+                DataDrugs.forEach(function(value){
+                    if(value!= null){
+                        if(lowestPrice > parseFloat(value.Price)){
+                            lowestPrice =  parseFloat(value.Price);
+                            lowestPharmacy=value.PharmacyName;
+                        }
+                       
+                    }
+                });
+                pricingData1.price = lowestPrice+""
+                pricingData1.pharmacy = lowestPharmacy;
+    
     query2 = 'INSERT INTO public_price(average_price, createdat, difference, drug_details_id, lowest_market_price, pharmacy, price, program_id, recommended_price) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *';
     values = [pricingData1.average_price, pricingData1.createdat, pricingData1.difference, DrugId, pricingData1.lowest_market_price,pricingData1.pharmacy,pricingData1.price,pricingData1.program_id,pricingData1.recommended_price];
     await client.query(query2, values)
