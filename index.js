@@ -13,6 +13,13 @@ function DateFunction(){
     var dateTime = date+' '+time;
     return dateTime;
 }
+function comparePrices(a,b){
+    if(a.price === null) return 1;
+    if(b.price === null) return -1;
+    if (a.price > b.price) return 1;
+    if (b.price >= a.price) return -1;
+}
+
 var DrugId=""
 const client=new Client({
     connectionString:connectionString
@@ -98,28 +105,90 @@ try
    await rp(options).then(async function(response){
     var jsondata1 = response;
     var DataDrugs = jsondata1.Drugs;
+    
     if(DataDrugs != undefined && DataDrugs.length > 0){
          a++;
-                var lowestPrice =  parseFloat(DataDrugs[0].Price)
-                var lowestPharmacy=DataDrugs[0].PharmacyName;
+                var CVSPrice = {};
+                CVSPrice.price = null ;
+                CVSPrice.pharmacy=null;
+                CVSPrice.rank = 0;
+                var WalmartPrice = {};
+                WalmartPrice.price =  null;
+                WalmartPrice.pharmacy=null;
+                WalmartPrice.rank = 0;
+                var WalgreenPrice = {};
+                WalgreenPrice.price =  null;
+                WalgreenPrice.pharmacy=null;
+                WalgreenPrice.rank = 0;
+                var KrogerPrice = {};
+                KrogerPrice.price =  null ;
+                KrogerPrice.pharmacy =null;
+                KrogerPrice.rank = 0;
+                var OtherPrice = {};
+                OtherPrice.price =  null ;
+                OtherPrice.pharmacy =null;
+                OtherPrice.rank = 0;
+                
                 DataDrugs.forEach(function(value){
                     if(value!= null){
-                        if(lowestPrice > parseFloat(value.Price)){
-                            lowestPrice =  parseFloat(value.Price);
-                            lowestPharmacy=value.PharmacyName;
+                      
+                        if(value.PharmacyName.toUpperCase().includes("CVS")){
+                        
+                        if(CVSPrice.price == null || CVSPrice.price > parseFloat(value.Price)){
+                            CVSPrice.price =  parseFloat(value.Price);
+                            CVSPrice.pharmacy=value.PharmacyName;
+                        }
+                       
+                        }else if(value.PharmacyName.toUpperCase().includes("WALMART")){
+                            if(WalmartPrice.price == null ||WalmartPrice.price > parseFloat(value.Price)){
+                                WalmartPrice.price =  parseFloat(value.Price);
+                                WalmartPrice.pharmacy=value.PharmacyName;
+                            }
+                          
+                        }else if(value.PharmacyName.toUpperCase().includes("WALGREENS")){
+                            if(WalgreenPrice.price == null ||WalgreenPrice.price > parseFloat(value.Price)){
+                                WalgreenPrice.price =  parseFloat(value.Price);
+                                WalgreenPrice.pharmacy=value.PharmacyName;
+                            }
+                           
+                        }else if(value.PharmacyName.toUpperCase().includes("KROGER")){
+                            if(KrogerPrice.price == null ||KrogerPrice.price > parseFloat(value.Price)){
+                                KrogerPrice.price =  parseFloat(value.Price);
+                                KrogerPrice.pharmacy=value.PharmacyName;
+                            }
+                           
+                        }else {
+                            if(OtherPrice.price == null || OtherPrice.price > parseFloat(value.Price)){
+                                OtherPrice.price =  parseFloat(value.Price);
+                                OtherPrice.pharmacy=value.PharmacyName;
+                            }
+                            
                         }
                        
                     }
                 });
-                pricingData1.price = lowestPrice+""
-                pricingData1.pharmacy = lowestPharmacy;
-    
-    query2 = 'INSERT INTO public_price(average_price, createdat, difference, drug_details_id, lowest_market_price, pharmacy, price, program_id, recommended_price) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *';
-    values = [pricingData1.average_price, pricingData1.createdat, pricingData1.difference, DrugId, pricingData1.lowest_market_price,pricingData1.pharmacy,pricingData1.price,pricingData1.program_id,pricingData1.recommended_price];
-    await client.query(query2, values)
-                    .then(res => {
-                    })
+                  var pricesArr = [WalgreenPrice,WalmartPrice,CVSPrice,OtherPrice, KrogerPrice];
+            console.log(pricesArr)
+            pricesArr.sort(comparePrices)
+           
+            pricesArr[0].rank = 0;
+            pricesArr[1].rank = 1;
+            pricesArr[2].rank = 2;
+            pricesArr[3].rank = 3;
+            pricesArr[4].rank = 4;
+            
+            console.log(pricesArr)
+            pricesArr.forEach(async function (price){
+                pricingData1.price = price.price;
+                pricingData1.pharmacy = price.pharmacy;
+                pricingData1.rank  = price.rank;
+                query2 = 'INSERT INTO public_price(average_price, createdat, difference, drug_details_id, lowest_market_price, pharmacy, price, program_id, recommended_price,rank, unc_price_flag) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *';
+                values = [pricingData1.average_price, pricingData1.createdat, pricingData1.difference, DrugId, pricingData1.lowest_market_price,pricingData1.pharmacy,pricingData1.price,pricingData1.program_id,pricingData1.recommended_price,pricingData1.rank,false];
+                await client.query(query2, values)
+                                .then(res => {
+                                })
                     .catch(e => {console.log("errr")})
+            });
     
      }else {
     console.log("else"+DrugId)
